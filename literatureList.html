@@ -1,1049 +1,901 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>图书与论文管理 - 褐色复古风</title>
-  <style>
-    :root {
-      --bg: #3b2f2f;
-      --bg-light: #574841;
-      --bg-lighter: #7a6a6a;
-      --text: #d9cfc4;
-      --text-active: #f5f0e6;
-      --accent: #b07d62;
-      --accent-dark: #8b5e3c;
-      --border-radius: 12px;
-      --shadow: rgba(0,0,0,0.6);
-    }
-    * {
-      box-sizing: border-box;
-    }
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-    main {
-      flex-grow: 1;
-      position: relative;
-      overflow: hidden;
-    }
-    section.page {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 56px;
-      padding: 1rem;
-      background: var(--bg-light);
-      border-radius: var(--border-radius);
-      box-shadow: 0 4px 8px var(--shadow);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.4s ease;
-      overflow-y: auto;
-    }
-    section.page.active {
-      opacity: 1;
-      pointer-events: auto;
-    }
-    h2 {
-      margin-top: 0;
-      color: var(--accent);
-    }
-    input[type="text"], button {
-      font-size: 1rem;
-      border-radius: var(--border-radius);
-      border: none;
-      padding: 0.5rem 0.75rem;
-      margin: 0.3rem 0.3rem 1rem 0;
-      background: var(--bg-lighter);
-      color: var(--text);
-      box-shadow: inset 1px 1px 4px rgba(0,0,0,0.6);
-      transition: background-color 0.3s ease;
-    }
-    input[type="text"]:focus, button:hover {
-      background: var(--accent);
-      color: var(--text-active);
-      outline: none;
-      cursor: pointer;
-      box-shadow: 0 0 8px var(--accent);
-    }
-    button:disabled {
-      background: #555;
-      cursor: not-allowed;
-      box-shadow: none;
-    }
-
-    /* 底部导航栏 */
-    nav#tabNav {
-      position: fixed;
-      bottom: 0; left: 0; right: 0;
-      height: 56px;
-      background: var(--bg-light);
-      display: flex;
-      box-shadow: 0 -3px 6px var(--shadow);
-      border-radius: 0 0 var(--border-radius) var(--border-radius);
-      user-select: none;
-      overflow: hidden;
-      font-weight: 600;
-      font-size: 1rem;
-      color: var(--text);
-      --slider-z: 10;
-    }
-    nav#tabNav button.tab-btn {
-      flex-grow: 1;
-      background: none;
-      border: none;
-      color: var(--text);
-      position: relative;
-      z-index: 20;
-      transition: color 0.3s ease;
-      cursor: pointer;
-    }
-    nav#tabNav button.tab-btn.active {
-      color: black;
-    }
-    nav#tabNav #slider {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 50%;
-      height: 56px;
-      background: var(--accent);
-      border-radius: var(--border-radius) var(--border-radius) 0 0;
-      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      z-index: var(--slider-z);
-      cursor: grab;
-    }
-    nav#tabNav #slider:active {
-      cursor: grabbing;
-    }
-
-    /* 搜索页面 */
-    #searchPage input[type="text"] {
-      width: 180px;
-      max-width: 240px;
-    }
-    #searchForm > div {
-      margin-bottom: 0.8rem;
-    }
-    #searchForm label {
-      display: inline-block;
-      width: 60px;
-      font-weight: 600;
-      color: var(--accent);
-    }
-
-    /* 列表页面 */
-    #listPage {
-      display: flex;
-      flex-direction: column;
-    }
-    #listPage #filterInput {
-      width: 100%;
-      max-width: 320px;
-      margin-bottom: 0.8rem;
-    }
-    #selectionBar {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      margin-bottom: 0.6rem;
-      background: var(--accent-dark);
-      padding: 0.4rem 0.8rem;
-      border-radius: var(--border-radius);
-      color: var(--text-active);
-      box-shadow: 0 2px 5px var(--shadow);
-    }
-    #selectionBar button {
-      background: var(--bg-lighter);
-      color: var(--text);
-      font-weight: 600;
-      box-shadow: inset 1px 1px 3px rgba(0,0,0,0.6);
-      transition: background-color 0.3s ease;
-    }
-    #selectionBar button:hover:not(:disabled) {
-      background: var(--accent);
-      color: var(--text-active);
-      box-shadow: none;
-      cursor: pointer;
-    }
-    #selectionBar button:disabled {
-      background: #555;
-      cursor: not-allowed;
-      box-shadow: none;
-    }
-    table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0 8px;
-      background: var(--bg-lighter);
-      border-radius: var(--border-radius);
-      box-shadow: 0 4px 10px var(--shadow);
-      overflow: hidden;
-    }
-    table thead tr {
-      background: var(--accent);
-      color: var(--text-active);
-      border-radius: var(--border-radius);
-      display: table-row;
-    }
-    table thead th {
-      padding: 0.6rem 0.8rem;
-      text-align: left;
-      font-weight: 700;
-      user-select: none;
-    }
-    table tbody tr {
-      background: var(--bg-light);
-      border-radius: var(--border-radius);
-      box-shadow: inset 0 0 4px rgba(0,0,0,0.8);
-      transition: background-color 0.3s ease;
-      display: table-row;
-    }
-    table tbody tr:hover {
-      background: var(--accent-dark);
-      color: var(--text-active);
-    }
-    table tbody td {
-      padding: 0.6rem 0.8rem;
-      vertical-align: middle;
-    }
-    table tbody td.select-col {
-      width: 36px;
-    }
-    table tbody td.actions {
-      width: 70px;
-    }
-    .delete-btn {
-      background: var(--accent-dark);
-      color: var(--text-active);
-      border: none;
-      border-radius: var(--border-radius);
-      padding: 0.3rem 0.5rem;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-    .delete-btn:hover {
-      background: var(--accent);
-    }
-
-    /* 模态弹窗 */
-    #modalOverlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(59,47,47,0.85);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      visibility: hidden;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      z-index: 1000;
-    }
-    #modalOverlay.show {
-      visibility: visible;
-      opacity: 1;
-    }
-    #modal {
-      background: var(--bg-light);
-      padding: 1rem 1.2rem;
-      border-radius: var(--border-radius);
-      box-shadow: 0 6px 20px var(--shadow);
-      max-width: 400px;
-      width: 90%;
-      color: var(--text);
-    }
-    #modal h3 {
-      margin-top: 0;
-      color: var(--accent);
-    }
-    #modal label {
-      display: block;
-      margin-top: 0.6rem;
-    }
-    #modal input[type="text"] {
-      width: 100%;
-      padding: 0.4rem 0.6rem;
-      border-radius: var(--border-radius);
-      border: none;
-      background: var(--bg-lighter);
-      color: var(--text);
-      box-shadow: inset 1px 1px 4px rgba(0,0,0,0.6);
-    }
-    #modal button[type="submit"] {
-      margin-top: 1rem;
-      width: 100%;
-      background: var(--accent);
-      color: var(--text-active);
-      font-weight: 700;
-      border: none;
-      border-radius: var(--border-radius);
-      padding: 0.6rem 0;
-      cursor: pointer;
-      box-shadow: 0 0 8px var(--accent);
-    }
-    #modal button#modalCloseBtn {
-      margin-top: 0.5rem;
-      background: var(--accent-dark);
-      width: 100%;
-      padding: 0.5rem 0;
-      font-weight: 600;
-      border-radius: var(--border-radius);
-      cursor: pointer;
-      border: none;
-      color: var(--text-active);
-      box-shadow: none;
-      transition: background-color 0.3s ease;
-    }
-    #modal button#modalCloseBtn:hover {
-      background: var(--accent);
-      box-shadow: 0 0 8px var(--accent);
-    }
-
-    /* Toast 提示 */
-    #toast {
-      position: fixed;
-      top: 16px;
-      right: 16px;
-      padding: 0.8rem 1.2rem;
-      background: rgba(176,125,98,0.8);
-      color: var(--text-active);
-      font-weight: 600;
-      border-radius: var(--border-radius);
-      box-shadow: 0 0 10px var(--accent);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.5s ease;
-      z-index: 1500;
-    }
-    #toast.show {
-      opacity: 1;
-      pointer-events: auto;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>图书论文管理</title>
+<style>
+  body {
+    margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #3e2f1c; color: #f0e6d2;
+    user-select: none;
+  }
+  header {
+    background: #5a432a; text-align: center; padding: 1rem;
+    font-size: 1.5rem; font-weight: bold;
+    color: #e1d6b9;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.7);
+  }
+  main {
+    height: calc(100vh - 120px);
+    position: relative;
+    overflow: hidden;
+  }
+  section {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    padding: 1rem;
+    overflow-y: auto;
+    background: #4e3b24;
+    border-radius: 10px;
+    box-shadow: inset 0 0 20px #2a1f0f;
+    transition: opacity 0.5s ease;
+  }
+  section.hidden {
+    opacity: 0; pointer-events: none;
+  }
+  #search-page {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    height: 100%;
+  }
+  input[type="text"], input[type="number"] {
+    width: 240px; padding: 8px; border-radius: 6px; border: none;
+    margin-right: 10px; font-size: 1rem;
+  }
+  button {
+    background: #6f553b; color: #e1d6b9;
+    border: none; padding: 8px 16px;
+    border-radius: 6px; cursor: pointer;
+    font-weight: 600;
+    box-shadow: 0 3px 0 #4a3b2a;
+    transition: background-color 0.3s;
+  }
+  button:hover {
+    background: #947a56;
+  }
+  button:disabled {
+    background: #806a4c;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+  table {
+    width: 100%; border-collapse: separate;
+    border-spacing: 0;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 10px #261b0f;
+  }
+  th, td {
+    padding: 10px 12px;
+    text-align: left;
+    background: #5a442a;
+    border-bottom: 1px solid #7f6645;
+  }
+  th.sortable {
+    cursor: pointer;
+    user-select: none;
+  }
+  th.sortable:hover {
+    background: #806c47;
+  }
+  th, td:last-child {
+    text-align: center;
+  }
+  tr:hover {
+    background: #6f5634;
+  }
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+  tbody tr td:first-child {
+    width: 30px;
+    text-align: center;
+  }
+  tbody tr td:nth-last-child(2) {
+    width: 110px;
+  }
+  tbody tr td:nth-last-child(1) {
+    width: 70px;
+  }
+  #selection-bar {
+    position: fixed; bottom: 70px; left: 10px; right: 10px;
+    background: #5a442a;
+    padding: 10px;
+    border-radius: 10px;
+    box-shadow: 0 0 15px #3a2b1a;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: #e1d6b9;
+  }
+  #selection-bar button {
+    padding: 5px 12px;
+    font-size: 13px;
+  }
+  footer {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 60px;
+    background: #5a432a;
+    display: flex;
+    border-radius: 10px 10px 0 0;
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.7);
+    user-select: none;
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    line-height: 60px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #b09a73;
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
+  }
+  .tab.active {
+    color: #3e2f1c;
+  }
+  #slider {
+    position: absolute;
+    bottom: 0; left: 0;
+    height: 60px;
+    width: 50%;
+    background: #b09a73;
+    border-radius: 10px 10px 0 0;
+    transition: left 0.3s ease;
+    z-index: 0;
+    cursor: grab;
+  }
+  #slider:active {
+    cursor: grabbing;
+  }
+  #modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(62, 47, 28, 0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: 1000;
+  }
+  #modal-overlay.show {
+    opacity: 1; pointer-events: auto;
+  }
+  #modal {
+    background: #7f684a;
+    padding: 20px;
+    border-radius: 12px;
+    width: 320px;
+    box-shadow: 0 0 15px #4a3b2a;
+    color: #f0e6d2;
+  }
+  #modal label {
+    display: block;
+    margin-top: 10px;
+    font-weight: 600;
+  }
+  #modal input[type="text"], #modal input[type="number"], #modal select {
+    width: 100%;
+    padding: 6px;
+    border-radius: 6px;
+    border: none;
+    margin-top: 5px;
+    font-size: 1rem;
+    background: #a49071;
+    color: #3e2f1c;
+    font-weight: 600;
+  }
+  #modal select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    cursor: pointer;
+  }
+  #modal-buttons {
+    margin-top: 15px;
+    text-align: right;
+  }
+  #modal-buttons button {
+    margin-left: 10px;
+  }
+  #toast {
+    position: fixed;
+    bottom: 140px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #b09a73cc;
+    color: #3e2f1c;
+    padding: 12px 30px;
+    border-radius: 25px;
+    font-weight: 600;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+    z-index: 1100;
+  }
+  #toast.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+</style>
 </head>
 <body>
-  <main>
-    <section id="searchPage" class="page active" aria-label="搜索页面">
-      <h2>搜索图书或论文信息</h2>
-      <form id="searchForm" autocomplete="off" onsubmit="return false;">
-        <div>
-          <label for="isbnInput">ISBN:</label>
-          <input type="text" id="isbnInput" placeholder="输入ISBN搜索图书" />
-          <button id="btnIsbnSearch" type="button">搜索图书</button>
-        </div>
-        <div>
-          <label for="doiInput">DOI:</label>
-          <input type="text" id="doiInput" placeholder="输入DOI搜索论文" />
-          <button id="btnDoiSearch" type="button">搜索论文</button>
-        </div>
-      </form>
-    </section>
+<header>图书论文管理</header>
 
-    <section id="listPage" class="page" aria-label="列表页面">
-      <h2>图书与论文列表</h2>
-      <input type="text" id="filterInput" placeholder="搜索/筛选列表..." aria-label="筛选列表" />
-      <div id="selectionBar" hidden>
-        <span>已选中 <strong id="selectedCount">0</strong> 项</span>
-        <button id="btnSelectAll">全选</button>
-        <button id="btnSelectInverse">反选</button>
-        <button id="btnClearSelection">清除选择</button>
-        <button id="btnDeleteSelected">删除选中</button>
-        <button id="btnExportSelected">导出选中</button>
-        <button id="btnExportAll">导出全部</button>
-      </div>
-      <table aria-label="图书与论文信息列表" role="grid" aria-live="polite" aria-relevant="all">
-        <thead>
-          <tr>
-            <th><input type="checkbox" id="selectAllCheckbox" aria-label="全选当前筛选结果" /></th>
-            <th>类型</th>
-            <th>编号 (ISBN/DOI)</th>
-            <th>标题</th>
-            <th>作者</th>
-            <th>出版社 / 期刊</th>
-            <th>出版 / 发表日期</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody id="bookTableBody"></tbody>
-      </table>
-    </section>
-  </main>
-
-  <nav id="tabNav" role="tablist" aria-label="页面切换">
-    <button class="tab-btn active" id="tabSearch" role="tab" aria-selected="true" tabindex="0">搜索</button>
-    <button class="tab-btn" id="tabList" role="tab" aria-selected="false" tabindex="-1">列表</button>
-    <div id="slider"></div>
-  </nav>
-
-  <!-- 弹窗：搜索不到，手动输入 -->
-  <div id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <div id="modal">
-      <h3 id="modalTitle">未找到，请手动输入信息</h3>
-      <form id="modalForm" autocomplete="off">
-        <label for="modalType">类型:</label>
-        <input type="text" id="modalType" name="modalType" readonly />
-
-        <label for="modalIdInput">编号 (ISBN/DOI) (必填)：</label>
-        <input type="text" id="modalIdInput" name="modalIdInput" readonly />
-
-        <label for="modalTitleInput">标题 (必填)：</label>
-        <input type="text" id="modalTitleInput" name="modalTitleInput" required />
-
-        <label for="modalAuthorsInput">作者 (必填)：</label>
-        <input type="text" id="modalAuthorsInput" name="modalAuthorsInput" required />
-
-        <label for="modalPublisherInput">出版社 / 期刊：</label>
-        <input type="text" id="modalPublisherInput" name="modalPublisherInput" />
-
-        <label for="modalPublishDateInput">出版 / 发表日期：</label>
-        <input type="text" id="modalPublishDateInput" name="modalPublishDateInput" />
-
-        <button type="submit">添加</button>
-        <button type="button" id="modalCloseBtn">取消</button>
-      </form>
+<main>
+  <section id="search-page">
+    <div>
+      <input type="text" id="isbn-input" placeholder="输入ISBN号搜索图书" />
+      <button id="btn-isbn-search">搜索图书</button>
     </div>
-  </div>
+    <div>
+      <input type="text" id="doi-input" placeholder="输入论文DOI搜索论文" />
+      <button id="btn-doi-search">搜索论文</button>
+    </div>
+  </section>
 
-  <!-- 提示框 -->
-  <div id="toast" role="alert" aria-live="assertive" aria-atomic="true"></div>
+  <section id="list-page" class="hidden">
+    <div style="margin-bottom:10px;">
+      <input type="text" id="filter-input" placeholder="搜索列表内容..." style="width: 100%; padding: 8px; border-radius: 6px; border: none; font-size: 1rem;" />
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th><input type="checkbox" id="select-all"></th>
+          <th class="sortable" data-field="type">类型</th>
+          <th class="sortable" data-field="id">编号</th>
+          <th class="sortable" data-field="title">标题</th>
+          <th class="sortable" data-field="authors">作者</th>
+          <th class="sortable" data-field="publisher">出版社/期刊</th>
+          <th class="sortable" data-field="publishDate">出版/发表日期</th>
+          <th class="sortable" data-field="progress">阅读进度</th>
+          <th style="width: 70px;">操作</th>
+        </tr>
+      </thead>
+      <tbody id="list-body"></tbody>
+    </table>
+    <div id="selection-bar" hidden>
+      已选中 <span id="selected-count">0</span> 条
+      <button id="btn-select-all">全选</button>
+      <button id="btn-select-inverse">反选</button>
+      <button id="btn-clear-selection">清除选择</button>
+      <button id="btn-delete-selected">删除选中</button>
+      <button id="btn-export-selected">导出选中</button>
+      <button id="btn-export-all">导出全部</button>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="tab active" data-index="0">搜索</div>
+  <div class="tab" data-index="1">列表</div>
+  <div id="slider"></div>
+</footer>
+
+<div id="modal-overlay">
+  <form id="modal">
+    <h3 id="modal-title">编辑条目</h3>
+    <label>类型
+      <select id="modal-type">
+        <option value="图书">图书</option>
+        <option value="论文">论文</option>
+      </select>
+    </label>
+    <label>编号 (不可修改)
+      <input type="text" id="modal-id" readonly />
+    </label>
+    <label>标题 *
+      <input type="text" id="modal-title-input" required />
+    </label>
+    <label>作者 *
+      <input type="text" id="modal-authors-input" required />
+    </label>
+    <label>出版社/期刊
+      <input type="text" id="modal-publisher-input" />
+    </label>
+    <label>出版/发表日期
+      <input type="text" id="modal-publish-date-input" />
+    </label>
+    <label>总页数
+      <input type="number" id="modal-total-pages" min="0" />
+    </label>
+    <label>已读页数
+      <input type="number" id="modal-read-pages" min="0" />
+    </label>
+    <div id="modal-buttons">
+      <button type="submit">保存</button>
+      <button type="button" id="modal-close-btn">取消</button>
+    </div>
+  </form>
+</div>
+
+<div id="toast"></div>
 
 <script>
 (() => {
-  // tabs & pages
-  const tabs = {
-    search: document.getElementById('tabSearch'),
-    list: document.getElementById('tabList'),
-  };
-  const pages = {
-    search: document.getElementById('searchPage'),
-    list: document.getElementById('listPage'),
-  };
+  const isbnInput = document.getElementById('isbn-input');
+  const btnIsbnSearch = document.getElementById('btn-isbn-search');
+  const doiInput = document.getElementById('doi-input');
+  const btnDoiSearch = document.getElementById('btn-doi-search');
+  const searchPage = document.getElementById('search-page');
+  const listPage = document.getElementById('list-page');
+  const filterInput = document.getElementById('filter-input');
+  const listBody = document.getElementById('list-body');
+  const selectAllCheckbox = document.getElementById('select-all');
+  const selectionBar = document.getElementById('selection-bar');
+  const selectedCount = document.getElementById('selected-count');
+  const btnSelectAll = document.getElementById('btn-select-all');
+  const btnSelectInverse = document.getElementById('btn-select-inverse');
+  const btnClearSelection = document.getElementById('btn-clear-selection');
+  const btnDeleteSelected = document.getElementById('btn-delete-selected');
+  const btnExportSelected = document.getElementById('btn-export-selected');
+  const btnExportAll = document.getElementById('btn-export-all');
+
+  const modalOverlay = document.getElementById('modal-overlay');
+  const modalForm = document.getElementById('modal');
+  const modalType = document.getElementById('modal-type');
+  const modalIdInput = document.getElementById('modal-id');
+  const modalTitleInput = document.getElementById('modal-title-input');
+  const modalAuthorsInput = document.getElementById('modal-authors-input');
+  const modalPublisherInput = document.getElementById('modal-publisher-input');
+  const modalPublishDateInput = document.getElementById('modal-publish-date-input');
+  const modalTotalPages = document.getElementById('modal-total-pages');
+  const modalReadPages = document.getElementById('modal-read-pages');
+  const modalCloseBtn = document.getElementById('modal-close-btn');
+  const toast = document.getElementById('toast');
+
+  const tabs = document.querySelectorAll('.tab');
   const slider = document.getElementById('slider');
-  const tabNav = document.getElementById('tabNav');
 
-  let currentPage = 'search';
-
-  // 滑块拖拽状态管理
-  let isSelected = false; // 滑块是否选中（点击激活）
-  let isDragging = false;
-  let dragStartX = 0;
-  let sliderStartX = 0;
-
-  // 更新滑块位置和高亮tab
-  function updateSliderPosition(key) {
-    const btn = tabs[key];
-    slider.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), width 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
-    slider.style.width = btn.offsetWidth + 'px';
-    slider.style.transform = `translateX(${btn.offsetLeft}px)`;
-    Object.entries(tabs).forEach(([k, btn]) => {
-      btn.classList.toggle('active', k === key);
-      btn.setAttribute('aria-selected', k === key ? 'true' : 'false');
-      btn.tabIndex = k === key ? 0 : -1;
-    });
-  }
-
-  function switchPage(key) {
-    if (key === currentPage) return;
-    pages[currentPage].classList.remove('active');
-    pages[key].classList.add('active');
-    currentPage = key;
-    updateSliderPosition(key);
-  }
-
-  // 点击tab切换页面（取消默认立即切换，滑块用拖拽或点击滑块控制）
-  Object.entries(tabs).forEach(([key, btn]) => {
-    btn.addEventListener('click', e => {
-      e.preventDefault();
-      switchPage(key);
-      isSelected = false;
-      slider.style.cursor = 'grab';
-    });
-  });
-
-  // 滑块点击选中（激活拖拽状态）
-  slider.addEventListener('click', e => {
-    e.preventDefault();
-    if (!isSelected) {
-      isSelected = true;
-      slider.style.cursor = 'grabbing';
-    } else {
-      isSelected = false;
-      slider.style.cursor = 'grab';
-    }
-  });
-
-  // 滑块鼠标按下开始拖拽（只有滑块被选中时才拖拽）
-  slider.addEventListener('mousedown', e => {
-    if (e.button !== 0) return; // 只响应左键
-    if (!isSelected) return;    // 必须先点击选中滑块
-    isDragging = true;
-    dragStartX = e.clientX;
-    const navRect = tabNav.getBoundingClientRect();
-    const sliderRect = slider.getBoundingClientRect();
-    sliderStartX = sliderRect.left - navRect.left;
-    slider.style.transition = 'none';
-    e.preventDefault();
-  });
-
-  window.addEventListener('mousemove', e => {
-    if (!isDragging) return;
-    const navRect = tabNav.getBoundingClientRect();
-    let deltaX = e.clientX - dragStartX;
-    let newLeft = sliderStartX + deltaX;
-    newLeft = Math.max(0, Math.min(newLeft, navRect.width - slider.offsetWidth));
-    slider.style.transform = `translateX(${newLeft}px)`;
-  });
-
-  window.addEventListener('mouseup', e => {
-    if (!isDragging) return;
-    isDragging = false;
-    isSelected = false;
-    slider.style.cursor = 'grab';
-
-    const navRect = tabNav.getBoundingClientRect();
-    const sliderRect = slider.getBoundingClientRect();
-    const centerX = sliderRect.left - navRect.left + sliderRect.width / 2;
-
-    const btnCenters = Object.values(tabs).map(btn => btn.offsetLeft + btn.offsetWidth / 2);
-    let activeKey = 'search';
-    if (centerX < (btnCenters[0] + btnCenters[1]) / 2) activeKey = 'search';
-    else activeKey = 'list';
-
-    switchPage(activeKey);
-  });
-
-  // 初始化滑块位置
-  window.addEventListener('load', () => {
-    updateSliderPosition(currentPage);
-    renderTable();
-  });
-  window.addEventListener('resize', () => {
-    updateSliderPosition(currentPage);
-  });
-
-  // ========== 业务逻辑 ==========
-
-  // 搜索输入元素
-  const isbnInput = document.getElementById('isbnInput');
-  const doiInput = document.getElementById('doiInput');
-  const btnIsbnSearch = document.getElementById('btnIsbnSearch');
-  const btnDoiSearch = document.getElementById('btnDoiSearch');
-
-  let books = JSON.parse(localStorage.getItem('books') || '[]');
+  let currentTab = 0;
+  let books = [];
   let selection = new Map();
+  let currentSort = { field: '', direction: 1 };
 
-  // ISBN搜索图书
-  btnIsbnSearch.addEventListener('click', () => {
-    const isbn = isbnInput.value.trim();
-    if (!isbn) {
-      alert('请输入ISBN');
-      return;
+  function switchTab(index) {
+    if (index === currentTab) return;
+    currentTab = index;
+    if (currentTab === 0) {
+      searchPage.classList.remove('hidden');
+      listPage.classList.add('hidden');
+    } else {
+      listPage.classList.remove('hidden');
+      searchPage.classList.add('hidden');
     }
-    btnIsbnSearch.disabled = true;
-    fetchBookInfo(isbn).then(book => {
-      btnIsbnSearch.disabled = false;
-      if (book) {
-        const added = addBook(book);
-        if (added) {
-          renderTable(filterInput.value);
-          showToast('图书已添加');
-          isbnInput.value = '';
-          switchPage('list');
-        } else {
-          alert('该图书已存在列表中');
-        }
-      } else {
-        showModal('图书', isbn);
-      }
-    }).catch(() => {
-      btnIsbnSearch.disabled = false;
-      alert('网络错误，稍后再试');
+    tabs.forEach((tab, i) => {
+      tab.classList.toggle('active', i === currentTab);
+    });
+    slider.style.left = `${currentTab * 50}%`;
+  }
+  slider.style.width = '50%';
+  slider.style.left = '0';
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      switchTab(Number(tab.dataset.index));
     });
   });
 
-  // DOI搜索论文
-  btnDoiSearch.addEventListener('click', () => {
-    const doi = doiInput.value.trim();
-    if (!doi) {
-      alert('请输入DOI');
-      return;
-    }
-    btnDoiSearch.disabled = true;
-    fetchPaperInfo(doi).then(paper => {
-      btnDoiSearch.disabled = false;
-      if (paper) {
-        const added = addBook(paper);
-        if (added) {
-          renderTable(filterInput.value);
-          showToast('论文已添加');
-          doiInput.value = '';
-          switchPage('list');
-        } else {
-          alert('该论文已存在列表中');
-        }
-      } else {
-        showModal('论文', doi);
-      }
-    }).catch(() => {
-      btnDoiSearch.disabled = false;
-      alert('网络错误，稍后再试');
-    });
-  });
-
-  // 获取图书信息 - openlibrary API
- async function fetchBookInfo(isbn) {
-  // 多API并行调用示例
-  const cleanIsbn = isbn.replace(/[^0-9Xx]/g, '');
-  
-  const openLibraryFetch = fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${cleanIsbn}&format=json&jscmd=data`)
-    .then(res => res.json())
-    .then(data => {
-      const key = `ISBN:${cleanIsbn}`;
-      if (!data[key]) return null;
-      const bookData = data[key];
+  async function fetchBookInfo(isbn) {
+    const cleanIsbn = isbn.trim();
+    if (!cleanIsbn) return null;
+    try {
+      const res = await fetch(`https://openlibrary.org/isbn/${cleanIsbn}.json`);
+      if (!res.ok) return null;
+      const data = await res.json();
       return {
         source: 'OpenLibrary',
         type: '图书',
         id: cleanIsbn,
-        title: bookData.title || '',
-        authors: bookData.authors ? bookData.authors.map(a => a.name).join(', ') : '',
-        publisher: bookData.publishers ? bookData.publishers.map(p => p.name).join(', ') : '',
-        publishDate: bookData.publish_date || '',
-      };
-    }).catch(() => null);
-
-  // 你可以加Google Books API或其他API示例，简单示范:
-  const googleBooksFetch = fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${cleanIsbn}`)
-    .then(res => res.json())
-    .then(data => {
-      if (!data.items || data.items.length === 0) return null;
-      const vol = data.items[0].volumeInfo;
-      return {
-        source: 'GoogleBooks',
-        type: '图书',
-        id: cleanIsbn,
-        title: vol.title || '',
-        authors: vol.authors ? vol.authors.join(', ') : '',
-        publisher: vol.publisher || '',
-        publishDate: vol.publishedDate || '',
-      };
-    }).catch(() => null);
-
-  const results = await Promise.allSettled([openLibraryFetch, googleBooksFetch]);
-  // 过滤成功结果，去空
-  const books = results
-    .filter(r => r.status === 'fulfilled' && r.value !== null)
-    .map(r => r.value);
-
-  if (books.length === 0) return null;
-
-  // 简单融合逻辑：优先OpenLibrary，有数据的字段优先保留，不覆盖已有的非空字段
-  const merged = {};
-  for (const b of books) {
-    merged.type = b.type;
-    merged.id = b.id;
-    merged.title = merged.title || b.title;
-    merged.authors = merged.authors || b.authors;
-    merged.publisher = merged.publisher || b.publisher;
-    merged.publishDate = merged.publishDate || b.publishDate;
-  }
-  return merged;
-}
-
-
-  // 获取论文信息 - crossref API
-async function fetchPaperInfo(doi) {
-  const cleanDoi = doi.trim();
-
-  // CrossRef
-  const crossRefFetch = fetch(`https://api.crossref.org/works/${encodeURIComponent(cleanDoi)}`)
-    .then(async res => {
-      if (!res.ok) return null;
-      const data = await res.json();
-      if (!data.message) return null;
-      const msg = data.message;
-      return {
-        source: 'CrossRef',
-        type: '论文',
-        id: cleanDoi,
-        title: Array.isArray(msg.title) ? msg.title[0] : (msg.title || ''),
-        authors: msg.author ? msg.author.map(a => {
-          let name = a.family || '';
-          if (a.given) name = a.given + ' ' + name;
-          return name.trim();
-        }).join(', ') : '',
-        publisher: msg['container-title'] && msg['container-title'].length ? msg['container-title'][0] : '',
-        publishDate: msg['published-print'] ? formatDateParts(msg['published-print'].date-parts) :
-                      (msg['published-online'] ? formatDateParts(msg['published-online'].date-parts) : ''),
-      };
-    }).catch(() => null);
-
-  // OpenAlex
-  const openAlexFetch = fetch(`https://api.openalex.org/works?filter=doi:${encodeURIComponent(cleanDoi)}`)
-    .then(async res => {
-      if (!res.ok) return null;
-      const data = await res.json();
-      if (!data.results || data.results.length === 0) return null;
-      const paper = data.results[0];
-      return {
-        source: 'OpenAlex',
-        type: '论文',
-        id: cleanDoi,
-        title: paper.title || '',
-        authors: paper.authorships ? paper.authorships.map(a => a.author.display_name).join(', ') : '',
-        publisher: paper.journal ? paper.journal.display_name : '',
-        publishDate: paper.publication_date || '',
-      };
-    }).catch(() => null);
-
-  // Semantic Scholar（示例，不一定能直接用）
-  const semanticScholarFetch = fetch(`https://api.semanticscholar.org/graph/v1/paper/${encodeURIComponent(cleanDoi)}?fields=title,authors,journal,year`)
-    .then(async res => {
-      if (!res.ok) return null;
-      const data = await res.json();
-      return {
-        source: 'SemanticScholar',
-        type: '论文',
-        id: cleanDoi,
         title: data.title || '',
-        authors: data.authors ? data.authors.map(a => a.name).join(', ') : '',
-        publisher: data.journal ? data.journal.name : '',
-        publishDate: data.year ? data.year.toString() : '',
+        authors: (data.authors || []).map(a => a.name).join(', '),
+        publisher: (data.publishers || []).join(', '),
+        publishDate: data.publish_date || '',
+        totalPages: data.number_of_pages || '',
+        readPages: '',
+        progress: 0
       };
-    }).catch(() => null);
-
-  const results = await Promise.allSettled([crossRefFetch, openAlexFetch, semanticScholarFetch]);
-  const papers = results
-    .filter(r => r.status === 'fulfilled' && r.value !== null)
-    .map(r => r.value);
-
-  if (papers.length === 0) return null;
-
-  // 简单融合，优先第一个source，补充空字段
-  const merged = {};
-  for (const p of papers) {
-    merged.type = p.type;
-    merged.id = p.id;
-    merged.title = merged.title || p.title;
-    merged.authors = merged.authors || p.authors;
-    merged.publisher = merged.publisher || p.publisher;
-    merged.publishDate = merged.publishDate || p.publishDate;
-  }
-  return merged;
-}
-
-  function formatDateParts(parts) {
-    if (!parts || !Array.isArray(parts) || parts.length === 0) return '';
-    const p = parts[0];
-    if (p.length >= 3) return `${p[0]}-${String(p[1]).padStart(2,'0')}-${String(p[2]).padStart(2,'0')}`;
-    if (p.length === 2) return `${p[0]}-${String(p[1]).padStart(2,'0')}`;
-    if (p.length === 1) return `${p[0]}`;
-    return '';
+    } catch {
+      return null;
+    }
   }
 
-  // 添加数据去重，基于id（isbn或doi）
+  async function fetchPaperInfo(doi) {
+    const cleanDoi = doi.trim().toLowerCase();
+    if (!cleanDoi) return null;
+
+    const crossRefFetch = fetch(`https://api.crossref.org/works/${encodeURIComponent(cleanDoi)}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        const m = data?.message;
+        if (!m) return null;
+        return {
+          source: 'CrossRef',
+          type: '论文',
+          id: cleanDoi,
+          title: Array.isArray(m.title) ? m.title[0] : m.title || '',
+          authors: m.author ? m.author.map(a => `${a.given || ''} ${a.family || ''}`.trim()).join(', ') : '',
+          publisher: m['container-title'] ? m['container-title'][0] : '',
+          publishDate: m.published && m.published['date-parts'] ? m.published['date-parts'][0].join('-') : '',
+          totalPages: '',
+          readPages: '',
+          progress: 0
+        };
+      }).catch(() => null);
+
+    const semanticScholarFetch = fetch(`https://api.semanticscholar.org/graph/v1/paper/${encodeURIComponent(cleanDoi)}?fields=title,authors,venue,year`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (!data?.title) return null;
+        return {
+          source: 'SemanticScholar',
+          type: '论文',
+          id: cleanDoi,
+          title: data.title || '',
+          authors: data.authors ? data.authors.map(a => a.name).join(', ') : '',
+          publisher: data.venue || '',
+          publishDate: data.year ? String(data.year) : '',
+          totalPages: '',
+          readPages: '',
+          progress: 0
+        };
+      }).catch(() => null);
+
+    const results = await Promise.allSettled([crossRefFetch, semanticScholarFetch]);
+    const papersResults = results.filter(r => r.status === 'fulfilled' && r.value !== null).map(r => r.value);
+    if (papersResults.length === 0) return null;
+
+    const merged = {};
+    for (const p of papersResults) {
+      merged.type = p.type;
+      merged.id = p.id;
+      merged.title = merged.title || p.title;
+      merged.authors = merged.authors || p.authors;
+      merged.publisher = merged.publisher || p.publisher;
+      merged.publishDate = merged.publishDate || p.publishDate;
+      merged.totalPages = '';
+      merged.readPages = '';
+      merged.progress = 0;
+    }
+    return merged;
+  }
+
   function addBook(item) {
-    if (books.find(b => b.id === item.id)) return false;
     books.push(item);
     saveBooks();
-    return true;
+    renderTable(filterInput.value);
   }
+
   function saveBooks() {
-    localStorage.setItem('books', JSON.stringify(books));
+    localStorage.setItem('booksData', JSON.stringify(books));
   }
 
-  // 过滤
-  function filterBooks(keyword) {
-    const kw = keyword.trim().toLowerCase();
-    if (!kw) return books;
-    return books.filter(b =>
-      b.id.toLowerCase().includes(kw) ||
-      b.title.toLowerCase().includes(kw) ||
-      b.authors.toLowerCase().includes(kw)
-    );
-  }
-
-  // 渲染表格
-  function renderTable(filterKeyword = '') {
-    const tbody = document.getElementById('bookTableBody');
-    tbody.innerHTML = '';
-    const filtered = filterBooks(filterKeyword);
-    filtered.forEach(item => {
+  function renderTable(filter) {
+    const f = filter.trim().toLowerCase();
+    listBody.innerHTML = '';
+    selection.clear();
+    let filtered = books.filter(b => {
+      return !f || Object.values(b).some(val => val && val.toString().toLowerCase().includes(f));
+    });
+    if (currentSort.field) {
+      filtered.sort((a, b) => {
+        let va = a[currentSort.field] || '';
+        let vb = b[currentSort.field] || '';
+        va = va.toString().toLowerCase();
+        vb = vb.toString().toLowerCase();
+        if (va < vb) return -1 * currentSort.direction;
+        if (va > vb) return 1 * currentSort.direction;
+        return 0;
+      });
+    }
+    filtered.forEach(b => {
       const tr = document.createElement('tr');
-      // 选择框
-      const tdSelect = document.createElement('td');
-      tdSelect.className = 'select-col';
+      const tdCheck = document.createElement('td');
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
-      checkbox.checked = selection.get(item.id) || false;
+      checkbox.dataset.id = b.id;
       checkbox.addEventListener('change', () => {
-        selection.set(item.id, checkbox.checked);
+        if (checkbox.checked) selection.set(b.id, b);
+        else selection.delete(b.id);
         updateSelectionBar();
         updateSelectAllCheckbox();
       });
-      tdSelect.appendChild(checkbox);
-      tr.appendChild(tdSelect);
+      tdCheck.appendChild(checkbox);
+      tr.appendChild(tdCheck);
 
-      // 类型
-      const tdType = document.createElement('td');
-      tdType.textContent = item.type || '未知';
-      tr.appendChild(tdType);
-
-      // 编号 (ISBN/DOI)
-      const tdId = document.createElement('td');
-      tdId.textContent = item.id;
-      tr.appendChild(tdId);
-
-      // 标题
-      const tdTitle = document.createElement('td');
-      tdTitle.textContent = item.title;
-      tr.appendChild(tdTitle);
-
-      // 作者
-      const tdAuthors = document.createElement('td');
-      tdAuthors.textContent = item.authors;
-      tr.appendChild(tdAuthors);
-
-      // 出版社 / 期刊
-      const tdPub = document.createElement('td');
-      tdPub.textContent = item.publisher || '';
-      tr.appendChild(tdPub);
-
-      // 出版 / 发表日期
-      const tdDate = document.createElement('td');
-      tdDate.textContent = item.publishDate || '';
-      tr.appendChild(tdDate);
-
-      // 操作
-      const tdActions = document.createElement('td');
-      tdActions.className = 'actions';
-      const delBtn = document.createElement('button');
-      delBtn.textContent = '删除';
-      delBtn.className = 'delete-btn';
-      delBtn.addEventListener('click', () => {
-        if (confirm(`确认删除《${item.title}》吗？`)) {
-          books = books.filter(b => b.id !== item.id);
-          selection.delete(item.id);
-          saveBooks();
-          renderTable(filterInput.value);
-          updateSelectionBar();
-        }
+      ['type', 'id', 'title', 'authors', 'publisher', 'publishDate'].forEach(key => {
+        const td = document.createElement('td');
+        td.textContent = b[key] || '';
+        tr.appendChild(td);
       });
-      tdActions.appendChild(delBtn);
-      tr.appendChild(tdActions);
 
-      tbody.appendChild(tr);
+      // 阅读进度栏，显示进度条
+     // 阅读进度栏，显示进度条+百分比文本
+const tdProgress = document.createElement('td');
+const progressBarContainer = document.createElement('div');
+progressBarContainer.style.position = 'relative';   // 相对定位，方便内部文字绝对定位
+progressBarContainer.style.background = '#806c47';
+progressBarContainer.style.borderRadius = '10px';
+progressBarContainer.style.height = '18px';          // 稍高一点，为文本留空间
+progressBarContainer.style.width = '100px';
+progressBarContainer.style.margin = '4px auto';
+
+const progressBar = document.createElement('div');
+progressBar.style.height = '100%';
+progressBar.style.width = `${b.progress || 0}%`;
+progressBar.style.background = '#b09a73';
+progressBar.style.borderRadius = '10px 0 0 10px';
+
+const progressText = document.createElement('div');
+progressText.textContent = `${b.progress || 0}%`;
+progressText.style.position = 'absolute';
+progressText.style.top = '50%';
+progressText.style.left = '50%';
+progressText.style.transform = 'translate(-50%, -50%)';
+progressText.style.color = '#3e2f1c';
+progressText.style.fontWeight = '700';
+progressText.style.fontSize = '12px';
+progressText.style.userSelect = 'none';
+
+progressBarContainer.appendChild(progressBar);
+progressBarContainer.appendChild(progressText);
+tdProgress.appendChild(progressBarContainer);
+tr.appendChild(tdProgress);
+
+
+      const tdEdit = document.createElement('td');
+      const editBtn = document.createElement('button');
+      editBtn.textContent = '编辑';
+      editBtn.style.padding = '2px 8px';
+      editBtn.style.fontSize = '12px';
+      editBtn.addEventListener('click', () => openEditModal(b));
+      tdEdit.appendChild(editBtn);
+      tr.appendChild(tdEdit);
+
+      listBody.appendChild(tr);
     });
     updateSelectionBar();
     updateSelectAllCheckbox();
   }
 
-  // 选择栏更新
-  const selectionBar = document.getElementById('selectionBar');
-  const selectedCount = document.getElementById('selectedCount');
-  const btnDeleteSelected = document.getElementById('btnDeleteSelected');
   function updateSelectionBar() {
-    const filtered = filterBooks(filterInput.value);
-    const selectedFiltered = filtered.filter(item => selection.get(item.id));
-    if (selectedFiltered.length > 0) {
+    const count = selection.size;
+    if (count > 0) {
       selectionBar.hidden = false;
-      selectedCount.textContent = selectedFiltered.length;
+      selectedCount.textContent = count;
     } else {
       selectionBar.hidden = true;
-      selectedCount.textContent = '0';
     }
   }
 
-  // 筛选输入
-  const filterInput = document.getElementById('filterInput');
+  function updateSelectAllCheckbox() {
+    const allCheckboxes = listBody.querySelectorAll('input[type=checkbox]');
+    if (allCheckboxes.length === 0) {
+      selectAllCheckbox.checked = false;
+      selectAllCheckbox.indeterminate = false;
+      return;
+    }
+    const checkedCount = Array.from(allCheckboxes).filter(cb => cb.checked).length;
+    if (checkedCount === allCheckboxes.length) {
+      selectAllCheckbox.checked = true;
+      selectAllCheckbox.indeterminate = false;
+    } else if (checkedCount > 0) {
+      selectAllCheckbox.checked = false;
+      selectAllCheckbox.indeterminate = true;
+    } else {
+      selectAllCheckbox.checked = false;
+      selectAllCheckbox.indeterminate = false;
+    }
+  }
+
+  selectAllCheckbox.addEventListener('change', () => {
+    const checked = selectAllCheckbox.checked;
+    listBody.querySelectorAll('input[type=checkbox]').forEach(cb => {
+      cb.checked = checked;
+      if (checked) {
+        const id = cb.dataset.id;
+        const book = books.find(b => b.id === id);
+        if (book) selection.set(id, book);
+      } else {
+        selection.clear();
+      }
+    });
+    updateSelectionBar();
+  });
+
+  btnSelectAll.addEventListener('click', () => {
+    listBody.querySelectorAll('input[type=checkbox]').forEach(cb => {
+      cb.checked = true;
+      const id = cb.dataset.id;
+      const book = books.find(b => b.id === id);
+      if (book) selection.set(id, book);
+    });
+    updateSelectionBar();
+    updateSelectAllCheckbox();
+  });
+
+  btnSelectInverse.addEventListener('click', () => {
+    listBody.querySelectorAll('input[type=checkbox]').forEach(cb => {
+      cb.checked = !cb.checked;
+      const id = cb.dataset.id;
+      if (cb.checked) {
+        const book = books.find(b => b.id === id);
+        if (book) selection.set(id, book);
+      } else {
+        selection.delete(id);
+      }
+    });
+    updateSelectionBar();
+    updateSelectAllCheckbox();
+  });
+
+  btnClearSelection.addEventListener('click', () => {
+    selection.clear();
+    listBody.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
+    updateSelectionBar();
+    updateSelectAllCheckbox();
+  });
+
+  btnDeleteSelected.addEventListener('click', () => {
+    if (!confirm(`确定删除选中的 ${selection.size} 条记录？`)) return;
+    books = books.filter(b => !selection.has(b.id));
+    selection.clear();
+    saveBooks();
+    renderTable(filterInput.value);
+  });
+
+  function exportCSV(data) {
+    if (data.length === 0) {
+      alert('没有可导出的数据');
+      return;
+    }
+    const header = ['类型', '编号', '标题', '作者', '出版社/期刊', '出版/发表日期', '总页数', '已读页数', '阅读进度(%)'];
+    const rows = data.map(d => [
+      d.type, d.id, d.title, d.authors, d.publisher, d.publishDate,
+      d.totalPages || '', d.readPages || '', d.progress || 0
+    ]);
+    let csvContent = header.join(',') + '\n' +
+      rows.map(r => r.map(cell => `"${(cell||'').toString().replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'export.csv';
+    a.click();
+  }
+
+  btnExportSelected.addEventListener('click', () => {
+    exportCSV(Array.from(selection.values()));
+  });
+
+  btnExportAll.addEventListener('click', () => {
+    exportCSV(books);
+  });
+
   filterInput.addEventListener('input', () => {
     renderTable(filterInput.value);
   });
 
-  // 全选、反选、清除选择、删除选中
-  const btnSelectAll = document.getElementById('btnSelectAll');
-  const btnSelectInverse = document.getElementById('btnSelectInverse');
-  const btnClearSelection = document.getElementById('btnClearSelection');
-  const btnExportSelected = document.getElementById('btnExportSelected');
-  const btnExportAll = document.getElementById('btnExportAll');
-
-  btnSelectAll.addEventListener('click', () => {
-    filterBooks(filterInput.value).forEach(item => selection.set(item.id, true));
-    renderTable(filterInput.value);
-  });
-  btnSelectInverse.addEventListener('click', () => {
-    filterBooks(filterInput.value).forEach(item => {
-      selection.set(item.id, !selection.get(item.id));
-    });
-    renderTable(filterInput.value);
-  });
-  btnClearSelection.addEventListener('click', () => {
-    selection.clear();
-    renderTable(filterInput.value);
-  });
-  btnDeleteSelected.addEventListener('click', () => {
-    if (!confirm('确定删除选中的条目吗？')) return;
-    books = books.filter(item => !selection.get(item.id));
-    selection.clear();
-    saveBooks();
-    renderTable(filterInput.value);
-    updateSelectionBar();
-  });
-
-  // 导出为CSV
-  function exportToCsv(filename, rows) {
-    const processRow = (row) => {
-      return row.map(item => {
-        if (item === null || item === undefined) return '';
-        const str = item.toString();
-        if (str.search(/("|,|\n)/g) >= 0) {
-          return `"${str.replace(/"/g, '""')}"`;
-        }
-        return str;
-      }).join(',');
-    };
-    let csvFile = rows.map(processRow).join('\n');
-    let blob = new Blob([csvFile], { type: 'text/csv;charset=utf-8;' });
-    if (navigator.msSaveBlob) { // IE 10+
-      navigator.msSaveBlob(blob, filename);
-    } else {
-      let link = document.createElement('a');
-      if (link.download !== undefined) {
-        let url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', filename);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-    }
-  }
-  btnExportSelected.addEventListener('click', () => {
-    const selectedItems = books.filter(item => selection.get(item.id));
-    if (selectedItems.length === 0) {
-      alert('请选择要导出的条目');
-      return;
-    }
-    exportToCsv('导出选中列表.csv', makeCsvData(selectedItems));
-  });
-  btnExportAll.addEventListener('click', () => {
-    exportToCsv('导出全部列表.csv', makeCsvData(books));
-  });
-
-  function makeCsvData(items) {
-    const header = ['类型', '编号', '标题', '作者', '出版社/期刊', '出版/发表日期'];
-    const rows = [header];
-    items.forEach(item => {
-      rows.push([
-        item.type,
-        item.id,
-        item.title,
-        item.authors,
-        item.publisher,
-        item.publishDate,
-      ]);
-    });
-    return rows;
-  }
-
-  // 全选框
-  const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-  selectAllCheckbox.addEventListener('change', () => {
-    const checked = selectAllCheckbox.checked;
-    filterBooks(filterInput.value).forEach(item => {
-      selection.set(item.id, checked);
-    });
-    renderTable(filterInput.value);
-  });
-
-  // 更新全选框状态
-  function updateSelectAllCheckbox() {
-    const filtered = filterBooks(filterInput.value);
-    if (filtered.length === 0) {
-      selectAllCheckbox.checked = false;
-      selectAllCheckbox.indeterminate = false;
-      selectAllCheckbox.disabled = true;
-      return;
-    }
-    selectAllCheckbox.disabled = false;
-    const allSelected = filtered.every(item => selection.get(item.id));
-    const someSelected = filtered.some(item => selection.get(item.id));
-    selectAllCheckbox.checked = allSelected;
-    selectAllCheckbox.indeterminate = !allSelected && someSelected;
-  }
-
-  // 弹窗处理
-  const modalOverlay = document.getElementById('modalOverlay');
-  const modalForm = document.getElementById('modalForm');
-  const modalType = document.getElementById('modalType');
-  const modalIdInput = document.getElementById('modalIdInput');
-  const modalTitleInput = document.getElementById('modalTitleInput');
-  const modalAuthorsInput = document.getElementById('modalAuthorsInput');
-  const modalPublisherInput = document.getElementById('modalPublisherInput');
-  const modalPublishDateInput = document.getElementById('modalPublishDateInput');
-  const modalCloseBtn = document.getElementById('modalCloseBtn');
-
-  function showModal(type, id) {
-    modalType.value = type;
-    modalIdInput.value = id;
-    modalTitleInput.value = '';
-    modalAuthorsInput.value = '';
-    modalPublisherInput.value = '';
-    modalPublishDateInput.value = '';
+  function openEditModal(item) {
+    modalType.value = item.type;
+    modalIdInput.value = item.id;
+    modalTitleInput.value = item.title;
+    modalAuthorsInput.value = item.authors;
+    modalPublisherInput.value = item.publisher;
+    modalPublishDateInput.value = item.publishDate;
+    modalTotalPages.value = item.totalPages || '';
+    modalReadPages.value = item.readPages || '';
     modalOverlay.classList.add('show');
     modalTitleInput.focus();
+    modalIdInput.readOnly = true;
   }
+
   function closeModal() {
     modalOverlay.classList.remove('show');
   }
-  modalCloseBtn.addEventListener('click', closeModal);
-  modalOverlay.addEventListener('click', e => {
-    if (e.target === modalOverlay) closeModal();
+
+  modalCloseBtn.addEventListener('click', () => {
+    closeModal();
   });
+
   modalForm.addEventListener('submit', e => {
     e.preventDefault();
-    const type = modalType.value;
-    const id = modalIdInput.value.trim();
-    const title = modalTitleInput.value.trim();
-    const authors = modalAuthorsInput.value.trim();
-    const publisher = modalPublisherInput.value.trim();
-    const publishDate = modalPublishDateInput.value.trim();
-    if (!title || !authors) {
+    const item = {
+      type: modalType.value,
+      id: modalIdInput.value.trim(),
+      title: modalTitleInput.value.trim(),
+      authors: modalAuthorsInput.value.trim(),
+      publisher: modalPublisherInput.value.trim(),
+      publishDate: modalPublishDateInput.value.trim(),
+      totalPages: modalTotalPages.value.trim(),
+      readPages: modalReadPages.value.trim(),
+    };
+    // 计算进度
+    const totalPagesNum = Number(item.totalPages);
+    const readPagesNum = Number(item.readPages);
+    let progress = 0;
+    if (totalPagesNum > 0 && readPagesNum >= 0) {
+      progress = Math.min(100, Math.round((readPagesNum / totalPagesNum) * 100));
+    }
+    item.progress = progress;
+
+    if (!item.title || !item.authors) {
       alert('标题和作者为必填项');
       return;
     }
-    if (books.find(b => b.id === id)) {
-      alert('该条目已存在');
+    const idx = books.findIndex(b => b.id === item.id);
+    if (idx !== -1) {
+      books[idx] = item;
+      saveBooks();
+      renderTable(filterInput.value);
       closeModal();
-      return;
+      showToast(`${item.type}已保存`);
+    } else {
+      alert('编辑失败，找不到对应条目');
     }
-    books.push({type, id, title, authors, publisher, publishDate});
-    saveBooks();
-    renderTable(filterInput.value);
-    closeModal();
-    showToast(`${type}已添加`);
-    switchPage('list');
   });
 
-  // Toast提示
-  const toast = document.getElementById('toast');
-  let toastTimeout = null;
-  function showToast(msg) {
-    toast.textContent = msg;
-    toast.classList.add('show');
+  let toastTimeout;
+  function showToast(text) {
     if (toastTimeout) clearTimeout(toastTimeout);
+    toast.textContent = text;
+    toast.classList.add('show');
     toastTimeout = setTimeout(() => {
       toast.classList.remove('show');
-    }, 7000);
+    }, 4000);
   }
+
+  btnIsbnSearch.addEventListener('click', async () => {
+    const isbn = isbnInput.value.trim();
+    if (!isbn) {
+      alert('请输入ISBN');
+      return;
+    }
+    showLoading(true);
+    const info = await fetchBookInfo(isbn);
+    showLoading(false);
+    if (info) {
+      if (books.some(b => b.id === info.id)) {
+        alert('该图书已存在列表中');
+        return;
+      }
+      addBook(info);
+      showToast('图书已添加');
+    } else {
+      if (confirm('未找到对应图书信息，是否手动录入？')) {
+        modalType.value = '图书';
+        modalIdInput.value = isbn;
+        modalTitleInput.value = '';
+        modalAuthorsInput.value = '';
+        modalPublisherInput.value = '';
+        modalPublishDateInput.value = '';
+        modalTotalPages.value = '';
+        modalReadPages.value = '';
+        modalOverlay.classList.add('show');
+        modalTitleInput.focus();
+        modalIdInput.readOnly = false;
+      }
+    }
+  });
+
+  btnDoiSearch.addEventListener('click', async () => {
+    const doi = doiInput.value.trim();
+    if (!doi) {
+      alert('请输入DOI');
+      return;
+    }
+    showLoading(true);
+    const info = await fetchPaperInfo(doi);
+    showLoading(false);
+    if (info) {
+      if (books.some(b => b.id === info.id)) {
+        alert('该论文已存在列表中');
+        return;
+      }
+      addBook(info);
+      showToast('论文已添加');
+    } else {
+      if (confirm('未找到对应论文信息，是否手动录入？')) {
+        modalType.value = '论文';
+        modalIdInput.value = doi;
+        modalTitleInput.value = '';
+        modalAuthorsInput.value = '';
+        modalPublisherInput.value = '';
+        modalPublishDateInput.value = '';
+        modalTotalPages.value = '';
+        modalReadPages.value = '';
+        modalOverlay.classList.add('show');
+        modalTitleInput.focus();
+        modalIdInput.readOnly = false;
+      }
+    }
+  });
+
+  function showLoading(flag) {
+    btnIsbnSearch.disabled = flag;
+    btnDoiSearch.disabled = flag;
+    btnIsbnSearch.textContent = flag ? '搜索中...' : '搜索图书';
+    btnDoiSearch.textContent = flag ? '搜索中...' : '搜索论文';
+  }
+
+  function updateSortIndicators() {
+    document.querySelectorAll('th.sortable').forEach(th => {
+      th.textContent = th.textContent.replace(/[\u25B2\u25BC]/g, '');
+      const field = th.getAttribute('data-field');
+      if (field === currentSort.field) {
+        th.textContent += currentSort.direction === 1 ? ' ▲' : ' ▼';
+      }
+    });
+  }
+
+  document.querySelectorAll('th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const field = th.getAttribute('data-field');
+      if (currentSort.field === field) {
+        currentSort.direction = -currentSort.direction;
+      } else {
+        currentSort.field = field;
+        currentSort.direction = 1;
+      }
+      updateSortIndicators();
+      renderTable(filterInput.value);
+    });
+  });
+
+  function loadBooks() {
+    const data = localStorage.getItem('booksData');
+    if (data) {
+      try {
+        books = JSON.parse(data);
+      } catch {
+        books = [];
+      }
+    }
+  }
+
+  loadBooks();
+  updateSortIndicators();
+  renderTable('');
+
+  // 初始化tab
+  switchTab(0);
+
+  // 拖拽滑块
+  let isDragging = false;
+  let dragStartX = 0;
+  let sliderStartLeft = 0;
+
+  slider.addEventListener('mousedown', e => {
+    isDragging = true;
+    dragStartX = e.clientX;
+    sliderStartLeft = parseFloat(slider.style.left) || 0;
+    slider.style.transition = 'none';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      slider.style.transition = 'left 0.3s ease';
+      // 根据位置决定选中哪个tab
+      const leftPercent = parseFloat(slider.style.left);
+      if (leftPercent < 25) switchTab(0);
+      else switchTab(1);
+    }
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    const deltaX = e.clientX - dragStartX;
+    let newLeftPx = sliderStartLeft / 100 * window.innerWidth + deltaX;
+    newLeftPx = Math.min(Math.max(newLeftPx, 0), window.innerWidth / 2);
+    slider.style.left = (newLeftPx / window.innerWidth) * 100 + '%';
+  });
+
 })();
 </script>
-
 </body>
 </html>
