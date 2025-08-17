@@ -154,27 +154,37 @@
   #slider:active {
     cursor: grabbing;
   }
-  #modal-overlay {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(62, 47, 28, 0.85);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    opacity: 0; pointer-events: none;
-    transition: opacity 0.3s ease;
-    z-index: 1000;
-  }
-  #modal-overlay.show {
+  /* 让遮罩层仍然居中，但给底部留出 footer 安全距离（60px + 额外 16px） */
+#modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(62, 47, 28, 0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;     /* 中部 */
+  padding: 16px 16px 76px; /* 底部安全边距，避免视觉上“超出网页” */
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 1000;
+}
+
+#modal-overlay.show {
     opacity: 1; pointer-events: auto;
   }
-  #modal {
-    background: #7f684a;
-    padding: 20px;
-    border-radius: 12px;
-    width: 320px;
-    box-shadow: 0 0 15px #4a3b2a;
-    color: #f0e6d2;
-  }
+  
+
+/* 弹窗本体：限制最大高度，超出时内部滚动 */
+#modal {
+  background: #7f684a;
+  padding: 20px;
+  border-radius: 12px;
+  width: clamp(320px, 90vw, 520px);
+  max-height: calc(100vh - 120px); /* 不超过可视区（含上下留白） */
+  overflow-y: auto;                 /* 内容过多时内滚，不撑破屏幕 */
+  box-shadow: 0 0 15px #4a3b2a;
+  color: #f0e6d2;
+}
+
   #modal label {
     display: block;
     margin-top: 10px;
@@ -381,12 +391,14 @@
     });
   });
 
-  async function fetchBookInfo(isbn) {
-    const cleanIsbn = isbn.trim();
-    if (!cleanIsbn) return null;
-    try {
-      const res = await fetch(`https://openlibrary.org/isbn/${cleanIsbn}.json`);
-      if (!res.ok) return null;
+async function fetchBookInfo(isbn) {
+  const cleanIsbn = isbn.trim();
+  if (!cleanIsbn) return null;
+
+  // --- Open Library ---
+  try {
+    const res = await fetch(`https://openlibrary.org/isbn/${cleanIsbn}.json`);
+    if (res.ok) {
       const data = await res.json();
       return {
         source: 'OpenLibrary',
@@ -400,10 +412,61 @@
         readPages: '',
         progress: 0
       };
-    } catch {
-      return null;
     }
-  }
+  } catch {}
+
+  // --- Google Books ---
+  try {
+    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${cleanIsbn}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.items && data.items.length > 0) {
+        const volume = data.items[0].volumeInfo;
+        return {
+          source: 'GoogleBooks',
+          type: '图书',
+          id: cleanIsbn,
+          title: volume.title || '',
+          authors: (volume.authors || []).join(', '),
+          publisher: volume.publisher || '',
+          publishDate: volume.publishedDate || '',
+          totalPages: volume.pageCount || '',
+          readPages: '',
+          progress: 0
+        };
+      }
+    }
+  } catch {}
+
+  // --- ISBNdb (可选) ---
+  // try {
+  //   const res = await fetch(`https://api2.isbndb.com/book/${cleanIsbn}`, {
+  //     headers: { 'Authorization': 'YOUR_API_KEY' }
+  //   });
+  //   if (res.ok) {
+  //     const data = await res.json();
+  //     const book = data?.book;
+  //     if (book) {
+  //       return {
+  //         source: 'ISBNdb',
+  //         type: '图书',
+  //         id: cleanIsbn,
+  //         title: book.title || '',
+  //         authors: (book.authors || []).join(', '),
+  //         publisher: book.publisher || '',
+  //         publishDate: book.date_published || '',
+  //         totalPages: book.pages || '',
+  //         readPages: '',
+  //         progress: 0
+  //       };
+  //     }
+  //   }
+  // } catch {}
+
+  return null; // 如果都没找到
+}
+
+  
 
   async function fetchPaperInfo(doi) {
     const cleanDoi = doi.trim().toLowerCase();
@@ -466,10 +529,24 @@
   }
 
   function addBook(item) {
+  const exists = books.some(b => b.id === item.id);
+  if (exists) {
+    if (confirm('该条目已在列表中，确定重复添加？\n\n选择“舍弃”将不会添加，选择“确定”将会重复添加。')) {
+      books.push(item);
+      saveBooks();
+      renderTable(filterInput.value);
+      showToast('条目已重复添加');
+    } else {
+      showToast('添加已舍弃');
+    }
+  } else {
     books.push(item);
     saveBooks();
     renderTable(filterInput.value);
+    showToast('条目已添加');
   }
+}
+
 
   function saveBooks() {
     localStorage.setItem('booksData', JSON.stringify(books));
@@ -516,36 +593,36 @@
 
       // 阅读进度栏，显示进度条
      // 阅读进度栏，显示进度条+百分比文本
-const tdProgress = document.createElement('td');
-const progressBarContainer = document.createElement('div');
-progressBarContainer.style.position = 'relative';   // 相对定位，方便内部文字绝对定位
-progressBarContainer.style.background = '#806c47';
-progressBarContainer.style.borderRadius = '10px';
-progressBarContainer.style.height = '18px';          // 稍高一点，为文本留空间
-progressBarContainer.style.width = '100px';
-progressBarContainer.style.margin = '4px auto';
+	const tdProgress = document.createElement('td');
+	const progressBarContainer = document.createElement('div');
+	progressBarContainer.style.position = 'relative';   // 相对定位，方便内部文字绝对定位
+	progressBarContainer.style.background = '#806c47';
+	progressBarContainer.style.borderRadius = '10px';
+	progressBarContainer.style.height = '18px';          // 稍高一点，为文本留空间
+	progressBarContainer.style.width = '100px';
+	progressBarContainer.style.margin = '4px auto';
 
-const progressBar = document.createElement('div');
-progressBar.style.height = '100%';
-progressBar.style.width = `${b.progress || 0}%`;
-progressBar.style.background = '#b09a73';
-progressBar.style.borderRadius = '10px 0 0 10px';
+	const progressBar = document.createElement('div');
+	progressBar.style.height = '100%';
+	progressBar.style.width = `${b.progress || 0}%`;
+	progressBar.style.background = '#b09a73';
+	progressBar.style.borderRadius = '10px 0 0 10px';
 
-const progressText = document.createElement('div');
-progressText.textContent = `${b.progress || 0}%`;
-progressText.style.position = 'absolute';
-progressText.style.top = '50%';
-progressText.style.left = '50%';
-progressText.style.transform = 'translate(-50%, -50%)';
-progressText.style.color = '#3e2f1c';
-progressText.style.fontWeight = '700';
-progressText.style.fontSize = '12px';
-progressText.style.userSelect = 'none';
+	const progressText = document.createElement('div');
+	progressText.textContent = `${b.progress || 0}%`;
+	progressText.style.position = 'absolute';
+	progressText.style.top = '50%';
+	progressText.style.left = '50%';
+	progressText.style.transform = 'translate(-50%, -50%)';
+	progressText.style.color = '#3e2f1c';
+	progressText.style.fontWeight = '700';
+	progressText.style.fontSize = '12px';
+	progressText.style.userSelect = 'none';
 
-progressBarContainer.appendChild(progressBar);
-progressBarContainer.appendChild(progressText);
-tdProgress.appendChild(progressBarContainer);
-tr.appendChild(tdProgress);
+	progressBarContainer.appendChild(progressBar);
+	progressBarContainer.appendChild(progressText);
+	tdProgress.appendChild(progressBarContainer);
+	tr.appendChild(tdProgress);
 
 
       const tdEdit = document.createElement('td');
@@ -727,16 +804,19 @@ tr.appendChild(tdProgress);
       alert('标题和作者为必填项');
       return;
     }
-    const idx = books.findIndex(b => b.id === item.id);
-    if (idx !== -1) {
-      books[idx] = item;
-      saveBooks();
-      renderTable(filterInput.value);
-      closeModal();
-      showToast(`${item.type}已保存`);
-    } else {
-      alert('编辑失败，找不到对应条目');
-    }
+	const idx = books.findIndex(b => b.id === item.id);
+	if (idx !== -1) {
+	  // 更新已有条目
+	  books[idx] = item;
+	  showToast(`${item.type}已更新`);
+	} else {
+	  // 新增条目
+	  books.push(item);
+	  showToast(`${item.type}已添加`);
+	}
+	saveBooks();
+	renderTable(filterInput.value);
+	closeModal();
   });
 
   let toastTimeout;
